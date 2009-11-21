@@ -23,4 +23,4 @@
 ;;; THE SOFTWARE.
 
 (defpackage #:yacc-ebnf
-  (:use #:cl #:yacc #:anaphora #:iterate #:alexandria))
+  (:use #:cl #:yacc #:alexandria))

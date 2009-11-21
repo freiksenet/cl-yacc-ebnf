@@ -59,16 +59,42 @@
                   derive)))
     (cons (list symbol original) result)))
 
+(defun make-group (derive)
+  (let ((group (make-gensym "group")))
+    (values
+     (list
+      (list group derive))
+     group)))
+
+(defun process-grouping (symbol derive)
+  (let* ((result '())
+          (original
+           (mapcar #'(lambda (el)
+                       (if (and (consp el) (eq :group (car el)))
+                           (multiple-value-bind (derives group-symb) (make-group (cdr el))
+                             (appendf result derives)
+                             group-symb)
+                           el))
+                   derive)))
+       (cons (list symbol original) result)))
+
 (defun make-ebnf-production (symbol derives &key (action #'list) (action-form '()))
   "Creates a list of cl-yacc bnf productions from lispy ebnf notation"
   (cond
+    ((find :group (remove-if-not #'listp derives) :key #'car)
+     (mapcan #'(lambda (x) (funcall #'make-ebnf-production
+                                    (car x)
+                                    (cadr x)
+                                    :action action
+                                    :action-form action-form))
+             (process-grouping symbol derives)))
     ((find :repeat (remove-if-not #'listp derives) :key #'car)
-     (iter (for prod in (process-repeat symbol derives))
-           (appending (funcall #'make-ebnf-production
-                             (car prod)
-                             (cadr prod)
-                             :action action
-                             :action-form action-form))))
+     (mapcan #'(lambda (x) (funcall #'make-ebnf-production
+                                    (car x)
+                                    (cadr x)
+                                    :action action
+                                    :action-form action-form))
+             (process-repeat symbol derives)))
     ((find :option (remove-if-not #'listp derives) :key #'car)
      (mapcan #'(lambda (x) (funcall #'make-ebnf-production
                            symbol x

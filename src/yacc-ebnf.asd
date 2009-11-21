@@ -23,6 +23,6 @@
 ;;; THE SOFTWARE.
 
 (asdf:defsystem #:yacc-ebnf
-  :depends-on (#:yacc #:anaphora #:iterate #:alexandria)
+  :depends-on (#:yacc #:alexandria)
   :components ((:file "package")
                (:file "yacc-ebnf" :depends-on ("package"))))
