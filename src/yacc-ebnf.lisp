@@ -24,82 +24,46 @@
 
 (in-package :yacc-ebnf)
 
-(defun process-option (derive)
-  (apply #'map-product #'(lambda (&rest args) (remove '() args))
-         (labels ((process-option-rec (derive)
-                    (if (null derive)
-                        '()
-                        (cons
-                         (if (and (consp (car derive)) (eq :option (caar derive)))
-                             (append (cdar derive) '(()))
-                             (list (car derive)))
-                         (process-option-rec (cdr derive))))))
-           (process-option-rec derive))))
+(defstruct ebnf-prod symbol derives)
 
-(defun make-repeat (derive)
-  (let ((repeat (make-gensym "repeat")))
-    (values
-     (list
-      (list repeat derive)
-      (list repeat (append derive (list repeat))))
-    repeat)))
+(defun make-repeat (symbol derives)
+  (append
+   (expand-ebnf symbol derives :operation :option)
+   (list (make-ebnf-prod :symbol symbol :derives (list symbol)))))
 
-(defun make-optional (derive)
-  (list :option derive))
+(defun make-option (symbol derives)
+  (append
+   (expand-ebnf symbol derives)
+   (list (make-ebnf-prod :symbol symbol :derives '()))))
 
-(defun process-repeat (symbol derive)
-  (let* ((result '())
-         (original
-          (mapcar #'(lambda (el)
-                      (if (and (consp el) (eq :repeat (car el)))
-                          (multiple-value-bind (derives repeat-symb) (make-repeat (cdr el))
-                            (appendf result derives)
-                            (make-optional repeat-symb))
-                          el))
-                  derive)))
-    (cons (list symbol original) result)))
-
-(defun make-group (derive)
-  (let ((group (make-gensym "group")))
-    (values
-     (list
-      (list group derive))
-     group)))
-
-(defun process-grouping (symbol derive)
-  (let* ((result '())
-          (original
+(defun expand-ebnf (symbol derives &key (operation '()))
+  (let ((add-prods '()))
+    (append
+      (case operation
+        (:repeat
+         (make-repeat symbol derives))
+        (:option
+         (make-option symbol derives))
+        (otherwise
+         (list
+          (make-ebnf-prod
+           :symbol symbol
+           :derives
            (mapcar #'(lambda (el)
-                       (if (and (consp el) (eq :group (car el)))
-                           (multiple-value-bind (derives group-symb) (make-group (cdr el))
-                             (appendf result derives)
-                             group-symb)
+                       (if (consp el)
+                           (let ((gensym (make-gensym "production")))
+                             (appendf add-prods (expand-ebnf gensym (cdr el) :operation (car el)))
+                             gensym)
                            el))
-                   derive)))
-       (cons (list symbol original) result)))
+                   derives)))))
+     add-prods)))
 
 (defun make-ebnf-production (symbol derives &key (action #'list) (action-form '()))
   "Creates a list of cl-yacc bnf productions from lispy ebnf notation"
-  (cond
-    ((find :group (remove-if-not #'listp derives) :key #'car)
-     (mapcan #'(lambda (x) (funcall #'make-ebnf-production
-                                    (car x)
-                                    (cadr x)
-                                    :action action
-                                    :action-form action-form))
-             (process-grouping symbol derives)))
-    ((find :repeat (remove-if-not #'listp derives) :key #'car)
-     (mapcan #'(lambda (x) (funcall #'make-ebnf-production
-                                    (car x)
-                                    (cadr x)
-                                    :action action
-                                    :action-form action-form))
-             (process-repeat symbol derives)))
-    ((find :option (remove-if-not #'listp derives) :key #'car)
-     (mapcan #'(lambda (x) (funcall #'make-ebnf-production
-                           symbol x
-                           :action action
-                           :action-form action-form))
-            (process-option derives)))
-    (t
-     (list (make-production symbol derives :action action :action-form action-form)))))
+  (mapcar #'(lambda (prod)
+              (make-production
+               (ebnf-prod-symbol prod)
+               (ebnf-prod-derives prod)
+               :action action
+               :action-form action-form))
+          (expand-ebnf symbol derives)))
