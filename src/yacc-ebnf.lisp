@@ -26,15 +26,17 @@
 
 (defstruct ebnf-prod symbol derives)
 
+(defun make-or (symbol derives)
+  (mapcan
+   #'(lambda (derive)
+       (expand-ebnf symbol (if (listp derive) derive (list derive))))
+   derives))
+
 (defun make-repeat (symbol derives)
-  (append
-   (expand-ebnf symbol derives :operation :option)
-   (list (make-ebnf-prod :symbol symbol :derives (list symbol)))))
+  (expand-ebnf symbol (list derives symbol '()) :operation :or))
 
 (defun make-option (symbol derives)
-  (append
-   (expand-ebnf symbol derives)
-   (list (make-ebnf-prod :symbol symbol :derives '()))))
+  (expand-ebnf symbol (list derives '()) :operation :or))
 
 (defun expand-ebnf (symbol derives &key (operation '()))
   (let ((add-prods '()))
@@ -44,6 +46,8 @@
          (make-repeat symbol derives))
         (:option
          (make-option symbol derives))
+        (:or
+         (make-or symbol derives))
         (otherwise
          (list
           (make-ebnf-prod
@@ -67,3 +71,19 @@
                :action action
                :action-form action-form))
           (expand-ebnf symbol derives)))
+
+(defun make-ebnf-grammar (&key name (start-symbol (required-argument)) terminals precedence productions)
+  (make-grammar :name name :start-symbol start-symbol :terminals terminals :precedence precedence :productions productions))
+
+(defun make-ebnf-parser (grammar
+                    &key (discard-memos t) (muffle-conflicts nil)
+                    (print-derives-epsilon nil) (print-first-terminals nil)
+                    (print-states nil)
+                    (print-goto-graph nil) (print-lookaheads nil))
+  (make-parser grammar
+               :discard-memos discard-memos :muffle-conflicts muffle-conflicts
+               :print-derives-epsilon print-derives-epsilon
+               :print-first-terminals print-first-terminals
+               :print-states print-states
+               :print-goto-graph print-goto-graph
+               :print-lookaheads print-lookaheads))
