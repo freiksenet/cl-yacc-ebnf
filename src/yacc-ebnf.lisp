@@ -1,6 +1,6 @@
 ;;; cl-yacc-ebnf - an Extended Backus–Naur Form for cl-yacc parser generator.
 ;;;
-;;; (c) 2009 Mikhail Novikov
+;;; (c) 2009 Mikhail Novikov, Plato Wu
 ;;;
 ;;; This file is part of cl-yacc-ebnf.
 ;;;
