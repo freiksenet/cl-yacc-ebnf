@@ -23,4 +23,5 @@
 ;;; THE SOFTWARE.
 
 (defpackage #:yacc-ebnf
+  (:export #:define-ebnf-parser)
   (:use #:cl #:yacc #:alexandria))
