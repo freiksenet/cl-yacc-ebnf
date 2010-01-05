@@ -43,29 +43,32 @@
 
 (defun expand-ebnf (symbol derives &key (operation '()))
   (let ((add-prods '()))
-    (append
-      (case operation
-        (:repeat
-         (make-repeat symbol derives))
-        (:option
-         (make-option symbol derives))
-        (:or
-         (make-or symbol derives))
-        (:plus
-         (make-plus symbol derives))
-        (otherwise
-         (list
-          (make-ebnf-prod
-           :symbol symbol
-           :derives
-           (mapcar #'(lambda (el)
-                       (if (consp el)
-                           (let ((gensym (make-gensym "production")))
-                             (appendf add-prods (expand-ebnf gensym (cdr el) :operation (car el)))
-                             gensym)
-                           el))
-                   derives)))))
-     add-prods)))
+    (if (and (consp derives) (member (car derives) '(:repeat :option :or :plus)))
+        (expand-ebnf symbol (cdr derives) :operation (car derives))
+        (progn
+          (append
+           (case operation
+             (:repeat
+              (make-repeat symbol derives))
+             (:option
+              (make-option symbol derives))
+             (:or
+              (make-or symbol derives))
+             (:plus
+              (make-plus symbol derives))
+             (otherwise
+              (list
+               (make-ebnf-prod
+                :symbol symbol
+                :derives
+                (mapcar #'(lambda (el)
+                            (if (consp el)
+                                (let ((gensym (make-gensym "production")))
+                                  (appendf add-prods (expand-ebnf gensym (cdr el) :operation (car el)))
+                                  gensym)
+                                el))
+                        derives)))))
+           add-prods)))))
 
 (defun make-ebnf-production (symbol derives &key (action #'list) (action-form '()))
   "Creates a list of cl-yacc bnf productions from lispy ebnf notation"

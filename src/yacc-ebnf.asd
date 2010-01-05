@@ -25,4 +25,5 @@
 (asdf:defsystem #:yacc-ebnf
   :depends-on (#:yacc #:alexandria)
   :components ((:file "package")
-               (:file "yacc-ebnf" :depends-on ("package"))))
+               (:file "yacc-ebnf" :depends-on ("package"))
+               (:file "grammar-parser" :depends-on ("yacc-ebnf"))))
